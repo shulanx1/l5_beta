@@ -1,29 +1,26 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+* Simulate the beta LFP eveoked by dendritic events in cortical L5 pyramidals. 
 
-### What is this repository for? ###
+* Requirement:
+numpy
+scipy
+numba
+json
+matplotlib
+NEURON >= 7.7
+LFPy 2.0.3
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
-### How do I get set up? ###
+### Model Files ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* //func: helper functions 
+* //input: the files specifying morphology and biophysical properties
+* //mod: NEURON mechanism files, need to be compiled with nrnivmodl before start
+* //outputs: where the results will be saved
+* //beta_example.py: example file, run a 2 second simulation with randomized presynaptic spike train
 
-### Contribution guidelines ###
 
-* Writing tests
-* Code review
-* Other guidelines
+### Contact ###
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+* Please contact xiao208@purdue.edu for any questions
