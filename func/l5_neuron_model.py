@@ -1272,6 +1272,54 @@ class L5Model:
                         seg.g_pas = 3e-5
                         seg.cm = 1
 
+    def set_deficit_NMDA(self, sec_name = 'all'):
+        if sec_name == 'all':
+            self.w_1 = self.sec_e.shape[1] * [P['g_max_A']]
+            self.w_2 = self.sec_e.shape[1] * [0]
+            self.w_3 = self.sec_i.shape[1] * [P['g_max_G']]
+        else:
+            r_na = self.sec_e.shape[1] * [self.r_na]
+            for i, s in enumerate(self.NMDA_meta):
+                if sec_name in s['sec_name']:
+                    self.w_2[i] = 0
+                    r_na[i] = 0
+            self.r_na = r_na
+
+    def set_deficite_channels(self, mec_name, sec_name = 'all',  percentage = 0.3):
+        """
+
+        set conductance of certain channel to a certain percentage of original channel
+        :param mec_name:
+        :param prop_name:
+        :param sec_name:
+        :param percentage:
+        :return:
+        """
+        prop_name = 'g' + mec_name + 'bar'
+        if sec_name == 'all':
+            for sec in self.cell.allseclist:
+                for seg in sec:
+                    try:
+                        seg_mec = getattr(seg, str(mec_name))
+                        current_value = getattr(seg_mec, prop_name)
+                        setattr(seg_mec, prop_name, current_value*percentage)
+                        if self.verbool:
+                            print('change %s in %s from %.6g to %.6g' %(prop_name, sec.name(), current_value, current_value*percentage))
+                    except AttributeError:
+                        pass
+        else:
+            for sec in self.cell.allseclist:
+                if sec.name()[0:4] in sec_name:
+                    for seg in sec:
+                        try:
+                            seg_mec = getattr(seg, str(mec_name))
+                            current_value = getattr(seg_mec, prop_name)
+                            setattr(seg_mec, prop_name, current_value * percentage)
+                            if self.verbool:
+                                print('change %s in %s from %.6g to %.6g' % (
+                                prop_name, sec.name(), current_value, current_value * percentage))
+                        except AttributeError:
+                            pass
 
     def set_weights(self, w_e, w_i):
         """Assign AMPA and NMDA weights with ratio r_n, and GABA weights.
@@ -1280,11 +1328,23 @@ class L5Model:
         ----------
         w_e, w_i : E and I synaptic weights
         """
-        r = self.r_na
         self.w_e = w_e
         self.w_i = w_i
-        self.w_1 = w_e / (1 + r)
-        self.w_2 = w_e * r / (1 + r)
+        if not isinstance(self.r_na, list):
+            r = self.r_na
+            self.w_1 = w_e / (1 + r)
+            self.w_2 = w_e * r / (1 + r)
+        else:
+            if len(self.r_na) < len(self.w_1):
+                r = self.r_na[0]
+                self.w_1 = w_e / (1 + r)
+                self.w_2 = w_e * r / (1 + r)
+            else:
+                for i in len(self.w_1):
+                    r = self.r_na[i]
+                    self.w_1[i] = w_e[i]/(1 + r)
+                    self.w_2[i] = w_e[i] * r / (1 + r)
+
         self.w_3 = w_i
 
     def create_stim(self, S, syns, weights):
