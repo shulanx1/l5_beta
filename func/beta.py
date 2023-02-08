@@ -1,7 +1,12 @@
+#%%
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
 from func import beta
+from func import visualization
+import scipy.io as sio
+import matplotlib.cm as cm
+import matplotlib
 
 
 def lowpass_filter_lfp(lfp, fs, Fc = 500., if_plot = 0):
@@ -76,14 +81,14 @@ def customFilt(data, Fs, filtbound = [10.,30.], if_plot = 0):
 
     return filtered_data
 
-def bandFilter(lfp, filtbound = [10., 30.]):
+def bandFilter(lfp, Fs, filtbound = [10., 30.]):
     filtered_lfp = np.zeros(lfp.shape)
     power = np.zeros(lfp.shape[0])
-    filtered_lfp= beta.customFilt(lfp, Fs, filtbound=filtbound)
+    filtered_lfp= customFilt(lfp, Fs, filtbound=filtbound)
     for i in range(lfp.shape[0]):
         power[i] = 10*np.log10(np.sum(np.abs(signal.hilbert(filtered_lfp[i,:]))**2))
     return filtered_lfp, power
-#%%
+
 def betaBurstDetection(Fs, beta_signal,channel = None, window = [0,1000]):
     trialFlag = 0
 
@@ -99,7 +104,10 @@ def betaBurstDetection(Fs, beta_signal,channel = None, window = [0,1000]):
     if channel == None:
         channel_range = range(beta_signal.shape[0])
     else:
-        channel_range = list(channel)
+        if isinstance(channel, int):
+            channel_range = [channel]
+        else:
+            channel_range = channel
     if trialFlag:
         timestamps = np.arange(window[idx, 0], 1 / Fs, window[idx, 1])
     else:
@@ -194,4 +202,120 @@ def betaBurstDetection(Fs, beta_signal,channel = None, window = [0,1000]):
 
     return beta_events
 
+def betaEvent(lfp_beta, betaBurst, Fs, channel = None, win = [-20,20], if_plot = 0):
+    if len(betaBurst) > 1:
+        raise ValueError('specify betaBurst channel')
+    window = np.arange(np.round(win[0]/1000*Fs), np.round(win[1]/1000*Fs), 1).astype(int)
+    t = window.astype(float)*1/Fs # in s
+    if channel == None:
+        LFP = np.zeros((lfp_beta.shape[0], len(window)))
+        for i in range(lfp_beta.shape[0]):
+            idx_peak = betaBurst[0][1,:].astype(int)
+            a = np.zeros((len(idx_peak), len(window)))
+            for j in range(len(idx_peak)):
+                if (idx_peak[j]+window[0]>0) & (idx_peak[j]+window[-1]<lfp_beta.shape[1]):
+                    a[j,:]= lfp_beta[i,idx_peak[j]+window]
+            LFP[i,:] = np.mean(a, axis = 0)
+    else:
+        if isinstance(channel, int):
+            idx_peak = betaBurst[0][1,:]
+            a = np.zeros((len(idx_peak), len(window)))
+            for j in range(len(idx_peak)):
+                if (idx_peak[j] + window[0] > 0) & (idx_peak[j] + window[-1] < lfp_beta.shape[1]):
+                    a[j,:]= lfp_beta[channel,idx_peak[j]+window]
+            LFP = np.mean(a, axis = 0)
+
+        else:
+            LFP = np.zeros((len(channel), len(window)))
+            for i_beta, i_channel in enumerate(channel):
+                idx_peak = betaBurst[0][1, :]
+                a = np.zeros((len(idx_peak), len(window)))
+                for j in range(len(idx_peak)):
+                    if (idx_peak[j] + window[0] > 0) & (idx_peak[j] + window[-1] < lfp_beta.shape[1]):
+                        a[j, :] = lfp_beta[i_channel, idx_peak[j] + window]
+                LFP[i_beta,:] = np.mean(a, axis = 0)
+
+    if if_plot:
+        plt.figure()
+        norm_color = matplotlib.colors.Normalize(vmin=0.0, vmax=63.0, clip=True)
+        mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.viridis)
+        for i in range(LFP.shape[0]):
+            plt.plot(t, LFP[i,:]-np.max(np.max(LFP))/5*i, color = mapper.to_rgba(i))
+        plt.show()
+
+    return LFP, t
+
+def customCSD(LFP, t, spacing, if_plot = 0, smooth = 1):
+    # convert unit
+    spacing = spacing/1e6 #um to m
+    data = LFP/1e6 #uV to V
+
+    # correct for the edges
+    vakData = np.zeros([data.shape[0] + 4, data.shape[1]])
+    vakData[0,:] = data[0,:]
+    vakData[1,:] = data[0,:]
+    vakData[2:-2,:] = data
+    vakData[-2,:] = data[-1,:]
+    vakData[-1,:] = data[-1,:]
+
+    n = 2
+    CSD1 = np.zeros(vakData.shape)
+
+    for i in range(2, vakData.shape[0]-2):
+        V_b = vakData[i+n,:]
+        V_o =  vakData[i,:]
+        V_a = vakData[i-n,:]
+
+        CSD1[i,:] = -(V_b + V_a-2*V_o)/((2*spacing)**2)
+
+    CSD = CSD1[2:-2,:]
+    x = np.arange(CSD.shape[0])
+
+    if smooth:
+        x_interp = np.arange(0,CSD.shape[0], 1/5)
+        CSD_smooth = np.zeros([len(x_interp), CSD.shape[1]])
+        for i in range(CSD.shape[1]):
+            CSD_smooth[:,i] = np.interp(x_interp, np.arange(CSD.shape[0]), CSD[:,i].reshape([CSD.shape[0],]))
+        CSD = CSD_smooth
+        x = x_interp
+
+    x = x*spacing*1e6
+    if if_plot:
+        plt.figure()
+        plt.imshow(CSD, origin = 'upper', cmap = 'jet', extent = [t[0]*1e3, t[-1]*1e3, x[-1], x[0]], aspect = 1/5)
+        plt.colorbar()
+        plt.show()
+
+    return CSD, x
+
+def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
+    # M = electrode.calc_mapping(cell)
+    # lfp = M @ cell.imem
+    lfp = lfp * 1e3  # unit in uV
+
+    Fs = 1 / (cell.dt / 1000.)
+    lfp_low = lowpass_filter_lfp(lfp, Fs, Fc=500.)
+    [lfp_beta, power] = bandFilter(lfp_low, Fs)
+    betaBurst_all = betaBurstDetection(Fs, lfp_beta, channel=None)
+    if if_plot:
+        visualization.plot_beta_event(lfp, lfp_beta, np.arange(0, 64, 10), cell, betaBurst_all)
+
+    [LFP_beta_narrow, t_CSD] = betaEvent(lfp_beta, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
+    [LFP_beta_broad, t_CSD] = betaEvent(lfp, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
+    spacing = electrode.y[0]-electrode.y[1]
+    [CSD, x_CSD] = customCSD(LFP_beta_narrow, t_CSD, spacing, if_plot=1, smooth=1)
+    data = {'t': cell.tvec,
+            'Fs': Fs,
+            'vm': cell.vmem,
+            'im': cell.imem,
+            'lfp': lfp,
+            'lfp_beta': lfp_beta[13],
+            'betaBurst': betaBurst_all[13],
+            'LFP_beta_narrow': LFP_beta_narrow,
+            'LFP_beta_broad': LFP_beta_broad,
+            't_CSD': t_CSD,
+            'x_CSD': x_CSD,
+            'CSD': CSD}
+    if if_save:
+        sio.savemat(result_file, data)
 

@@ -334,6 +334,8 @@ def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst):
     axs[0].plot(t, cell.vmem[0])
     axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[36]'))))])
     axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[60]'))))])
+    if isinstance(channel, int):
+        channel = [channel]
     for i, ax in enumerate(axs[1:]):
         ax.plot(t, lfp[i,:])
         ax.plot(t, beta_lfp[i,:])

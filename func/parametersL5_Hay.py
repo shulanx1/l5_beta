@@ -11,7 +11,6 @@ from neuron import h
 def init_params(wd):
     """ Create dictionary of model parameters """
     # neuron.load_mechanisms(wd + "\\mod")
-    # neuron.load_mechanisms(wd + "\\mod_Gao2020")
     neuron.load_mechanisms(wd + "\\mod_stochastic")
     param_file = wd + "\\input\\biophys4.json"
 
@@ -23,7 +22,7 @@ def init_params(wd):
     conditions = data['conditions'][0]
 
     tree = wd + '\\input\\cell1.asc'
-    if_stochastic = True
+    if_stochastic = False
     stochastic_channel = ['na', 'K_Tst', 'NaTs2_t', 'K_Pst', 'Nap_Et2', 'NaTa_t_2F']
     N_e = 1600  # number of excitatory synapses
     N_i = 400  # number of inhibitory synapses

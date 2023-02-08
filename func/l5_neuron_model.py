@@ -1272,17 +1272,17 @@ class L5Model:
                         seg.g_pas = 3e-5
                         seg.cm = 1
 
-    def set_deficit_NMDA(self, sec_name = 'all'):
+    def set_deficit_NMDA(self, sec_name = 'all', percentage = 0.0):
         if sec_name == 'all':
             self.w_1 = self.sec_e.shape[1] * [P['g_max_A']]
-            self.w_2 = self.sec_e.shape[1] * [0]
+            self.w_2 = self.sec_e.shape[1] * [percentage*P['g_max_N']]
             self.w_3 = self.sec_i.shape[1] * [P['g_max_G']]
         else:
             r_na = self.sec_e.shape[1] * [self.r_na]
             for i, s in enumerate(self.NMDA_meta):
                 if sec_name in s['sec_name']:
-                    self.w_2[i] = 0
-                    r_na[i] = 0
+                    self.w_2[i] = percentage*P['g_max_N']
+                    r_na[i] = percentage*r_na
             self.r_na = r_na
 
     def set_deficite_channels(self, mec_name, sec_name = 'all',  percentage = 0.3):
@@ -1297,7 +1297,7 @@ class L5Model:
         """
         prop_name = 'g' + mec_name + 'bar'
         if sec_name == 'all':
-            for sec in self.cell.allseclist:
+            for sec in self.allseclist:
                 for seg in sec:
                     try:
                         seg_mec = getattr(seg, str(mec_name))
@@ -1308,7 +1308,7 @@ class L5Model:
                     except AttributeError:
                         pass
         else:
-            for sec in self.cell.allseclist:
+            for sec in self.allseclist:
                 if sec.name()[0:4] in sec_name:
                     for seg in sec:
                         try:
