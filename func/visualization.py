@@ -13,6 +13,7 @@ from matplotlib.collections import PolyCollection
 from matplotlib.collections import LineCollection
 from scipy.integrate import odeint
 from scipy import signal
+import matplotlib.transforms as mtransforms
 # from neurom import viewer
 # import neurom
 
@@ -127,6 +128,8 @@ def plot_nsg(cell,  electrode = None, sparse_plot = 8):
                 c=color_electrode.reshape(1,3),cmap = 'viridis',  marker='o', s=20)
     ax.set_xticks([])
     ax.set_yticks([])
+
+    plt.show()
 
 def plot_nsg_weight(cell,  W_e, W_i, rates_e, rates_i, sparse_plot = 4):
     fig1 = plt.figure()
@@ -323,6 +326,24 @@ def plot_electrode_LFP_1D(LFP, cell, electrode, time_range, if_plot_morphology =
         ax.set_xlim(time_range[0], time_range[1])
         cbar = plt.colorbar(mapper, ax=ax)
         cbar.set_label('LFP (uV)', rotation=270)
+    plt.show()
+#%%
+def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst):
+    t = np.arange(beta_lfp.shape[1])*cell.dt
+    fig, axs = plt.subplots(1+len(channel), 1)
+    axs[0].plot(t, cell.vmem[0])
+    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[36]'))))])
+    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[60]'))))])
+    for i, ax in enumerate(axs[1:]):
+        ax.plot(t, lfp[i,:])
+        ax.plot(t, beta_lfp[i,:])
+        yplot = np.linspace(np.min(lfp[i,:]), np.max(lfp[i,:]), 100)
+        if len(betaBurst)>len(channel):
+            for j in range(betaBurst[channel[i]].shape[1]):
+                ax.axvspan(t[int(betaBurst[channel[i]][0,j])],t[int(betaBurst[channel[i]][2,j])], color = 'g', alpha = 0.5 )
+        else:
+            for j in range(betaBurst[i].shape[1]):
+                ax.axvspan(t[int(betaBurst[i][0,j])],t[int(betaBurst[i][2,j])], color = 'g', alpha = 0.5 )
     plt.show()
 
 
