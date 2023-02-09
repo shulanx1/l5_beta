@@ -1274,15 +1274,15 @@ class L5Model:
 
     def set_deficit_NMDA(self, sec_name = 'all', percentage = 0.0):
         if sec_name == 'all':
-            self.w_1 = self.sec_e.shape[1] * [P['g_max_A']]
-            self.w_2 = self.sec_e.shape[1] * [percentage*P['g_max_N']]
-            self.w_3 = self.sec_i.shape[1] * [P['g_max_G']]
+            self.w_1 = self.sec_e.shape[1] * [self.P['g_max_A']]
+            self.w_2 = self.sec_e.shape[1] * [percentage*self.P['g_max_N']]
+            self.w_3 = self.sec_i.shape[1] * [self.P['g_max_G']]
         else:
             r_na = self.sec_e.shape[1] * [self.r_na]
             for i, s in enumerate(self.NMDA_meta):
                 if sec_name in s['sec_name']:
-                    self.w_2[i] = percentage*P['g_max_N']
-                    r_na[i] = percentage*r_na
+                    self.w_2[i] = percentage*self.P['g_max_N']
+                    r_na[i] = percentage*r_na[i]
             self.r_na = r_na
 
     def set_deficite_channels(self, mec_name, sec_name = 'all',  percentage = 0.3):

@@ -93,7 +93,7 @@ def betaBurstDetection(Fs, beta_signal,channel = None, window = [0,1000]):
     trialFlag = 0
 
     lowThresholdFactor = 1
-    highThresholdFactor = 2.5
+    highThresholdFactor = 3.5
     minInterRippleInterval = 25  # ms
     minBetaDuration = 30
     maxBetaDuration = 250
@@ -238,14 +238,15 @@ def betaEvent(lfp_beta, betaBurst, Fs, channel = None, win = [-20,20], if_plot =
     if if_plot:
         plt.figure()
         norm_color = matplotlib.colors.Normalize(vmin=0.0, vmax=63.0, clip=True)
-        mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.viridis)
+        mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.cool)
         for i in range(LFP.shape[0]):
             plt.plot(t, LFP[i,:]-np.max(np.max(LFP))/5*i, color = mapper.to_rgba(i))
+        plt.xlim([-0.05, 0.05])
         plt.show()
 
     return LFP, t
 
-def customCSD(LFP, t, spacing, if_plot = 0, smooth = 1):
+def customCSD(LFP, t, spacing, if_plot = 0, smooth = 1, T_range = None):
     # convert unit
     spacing = spacing/1e6 #um to m
     data = LFP/1e6 #uV to V
@@ -284,6 +285,7 @@ def customCSD(LFP, t, spacing, if_plot = 0, smooth = 1):
         plt.figure()
         plt.imshow(CSD, origin = 'upper', cmap = 'jet', extent = [t[0]*1e3, t[-1]*1e3, x[-1], x[0]], aspect = 1/5)
         plt.colorbar()
+        plt.xlim([-50, 50])
         plt.show()
 
     return CSD, x
@@ -309,7 +311,7 @@ def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
             'vm': cell.vmem,
             'im': cell.imem,
             'lfp': lfp,
-            'lfp_beta': lfp_beta[13],
+            'lfp_beta': lfp_beta[12],
             'betaBurst': betaBurst_all[13],
             'LFP_beta_narrow': LFP_beta_narrow,
             'LFP_beta_broad': LFP_beta_broad,
@@ -318,4 +320,24 @@ def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
             'CSD': CSD}
     if if_save:
         sio.savemat(result_file, data)
+
+    beta_dur = []
+    beta_amp = []
+    beta_num = betaBurst.shape[1]
+
+    for i in range(betaBurst.shape[1]):
+        beta_amp.append(betaBurst[3, i])
+        beta_dur.append((betaBurst[2, i] - betaBurst[0, i]) / Fs * 1000)
+    beta_amp = np.asarray(beta_amp).flatten()
+    beta_dur = np.asarray(beta_dur).flatten()
+
+    datastat = {
+        'beta_amp': beta_amp,
+        'beta_dur': beta_dur,
+        'beta_num': beta_num
+    }
+
+    if if_save:
+        sio.savemat(result_file[:-4] + '_stat.mat', datastat)
+    return data
 

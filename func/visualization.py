@@ -328,16 +328,20 @@ def plot_electrode_LFP_1D(LFP, cell, electrode, time_range, if_plot_morphology =
         cbar.set_label('LFP (uV)', rotation=270)
     plt.show()
 #%%
-def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst):
+def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst, T_range = None):
+    if isinstance(channel, int) or isinstance(channel, float):
+        channel = [channel]
     t = np.arange(beta_lfp.shape[1])*cell.dt
     fig, axs = plt.subplots(1+len(channel), 1)
     axs[0].plot(t, cell.vmem[0])
     axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[36]'))))])
     axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[60]'))))])
-    if isinstance(channel, int):
-        channel = [channel]
+    if T_range == None:
+        axs[0].set_xlim(t[0], t[-1])
+    else:
+        axs[0].set_xlim(T_range[0], T_range[1])
     for i, ax in enumerate(axs[1:]):
-        ax.plot(t, lfp[i,:])
+        # ax.plot(t, lfp[i,:])
         ax.plot(t, beta_lfp[i,:])
         yplot = np.linspace(np.min(lfp[i,:]), np.max(lfp[i,:]), 100)
         if len(betaBurst)>len(channel):
@@ -345,10 +349,29 @@ def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst):
                 ax.axvspan(t[int(betaBurst[channel[i]][0,j])],t[int(betaBurst[channel[i]][2,j])], color = 'g', alpha = 0.5 )
         else:
             for j in range(betaBurst[i].shape[1]):
-                ax.axvspan(t[int(betaBurst[i][0,j])],t[int(betaBurst[i][2,j])], color = 'g', alpha = 0.5 )
+                ax.axvspan(t[int(betaBurst[i][0,j])],t[int(betaBurst[i][2,j])], color = 'g', alpha = 0.5)
+        if T_range == None:
+            ax.set_xlim(t[0], t[-1])
+        else:
+            ax.set_xlim(T_range[0], T_range[1])
     plt.show()
 
+def plot_aligned_beta(LFP, t):
+    plt.figure()
+    norm_color = matplotlib.colors.Normalize(vmin=0.0, vmax=63.0, clip=True)
+    mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.cool)
+    for i in range(LFP.shape[0]):
+        plt.plot(t, LFP[i, :] - np.max(np.max(LFP)) / 5 * i, color=mapper.to_rgba(i))
+    plt.xlim([-0.05, 0.05])
+    plt.ylim([-5000, 500])
+    plt.show()
 
+def plot_CSD(CSD, t, x, c_range = [-2e5, 2e5]):
+    plt.figure()
+    plt.imshow(CSD, origin='upper', cmap='jet', extent=[t[0] * 1e3, t[-1] * 1e3, x[-1], x[0]], aspect=1 / 5, vmin=c_range[0], vmax=c_range[1])
+    plt.colorbar()
+    plt.xlim([-50, 50])
+    plt.show()
 
 # def plot_nsg(cell, synapses, electrode, time_range):
 #     fig1 = plt.figure()
