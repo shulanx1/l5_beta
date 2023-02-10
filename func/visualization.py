@@ -53,7 +53,7 @@ def plot_Vm_traces(cell, sections, time_range, if_plot = 0):
 
     return vm
 
-def plot_nsg(cell,  electrode = None, sparse_plot = 8):
+def plot_nsg(cell,  electrode = None, if_plot_synapses = 1, sparse_plot = 8):
     fig1 = plt.figure()
     max_size = 3
     min_size = 1
@@ -74,25 +74,26 @@ def plot_nsg(cell,  electrode = None, sparse_plot = 8):
             ax.plot(np.r_[cell.xstart[idx], cell.xend[idx][-1]],
                     np.r_[cell.ystart[idx], cell.yend[idx][-1]],
                     color='k')
-    for k, s in enumerate(cell.AMPA_meta):
-        if (k % sparse_plot) == 0:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
-                    color=color_AMPA, marker='^', markersize=min_size + (max_size - min_size) * W_AMPA[k])
-    for k, s in enumerate(cell.NMDA_meta):
-        if (k % sparse_plot) == 1:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
-                    color=color_NMDA, marker='^', markersize=min_size + (max_size - min_size) * W_NMDA[k])
-    for k, s in enumerate(cell.GABA_meta):
-        if (k % sparse_plot) == 0:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
-                    color=color_GABA, marker='.', markersize=min_size + (max_size - min_size) * W_GABA[k])
+    if if_plot_synapses:
+        for k, s in enumerate(cell.AMPA_meta):
+            if (k % sparse_plot) == 0:
+                idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
+                        color=color_AMPA, marker='^', markersize=min_size + (max_size - min_size) * W_AMPA[k])
+        for k, s in enumerate(cell.NMDA_meta):
+            if (k % sparse_plot) == 1:
+                idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
+                        color=color_NMDA, marker='^', markersize=min_size + (max_size - min_size) * W_NMDA[k])
+        for k, s in enumerate(cell.GABA_meta):
+            if (k % sparse_plot) == 0:
+                idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                ax.plot([cell.xmid[idx]], [cell.ymid[idx]],
+                        color=color_GABA, marker='.', markersize=min_size + (max_size - min_size) * W_GABA[k])
 
     if electrode is not None:
         ax.scatter(electrode.x, electrode.y,
-                 c=color_electrode.reshape(1,3), marker='o', s=20)
+                 c=electrode.y[0]-electrode.y,cmap = 'viridis', marker='o', s=20)
 
     ax.set_xticks([])
     ax.set_yticks([])
@@ -107,25 +108,26 @@ def plot_nsg(cell,  electrode = None, sparse_plot = 8):
             ax.plot(np.r_[cell.zstart[idx], cell.zend[idx][-1]],
                     np.r_[cell.ystart[idx], cell.yend[idx][-1]],
                     color='k')
-    for k, s in enumerate(cell.AMPA_meta):
-        if (k % sparse_plot) == 0:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
-                    color=color_AMPA, marker='^', markersize=min_size + (max_size - min_size) * W_AMPA[k])
-    for k, s in enumerate(cell.NMDA_meta):
-        if (k % sparse_plot) == 1:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
-                    color=color_NMDA, marker='^', markersize=min_size + (max_size - min_size) * W_NMDA[k])
-    for k, s in enumerate(cell.GABA_meta):
-        if (k % sparse_plot) == 0:
-            idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
-            ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
-                    color=color_GABA, marker='^', markersize=min_size + (max_size - min_size) * W_GABA[k])
+        if if_plot_synapses:
+            for k, s in enumerate(cell.AMPA_meta):
+                if (k % sparse_plot) == 0:
+                    idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                    ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
+                            color=color_AMPA, marker='^', markersize=min_size + (max_size - min_size) * W_AMPA[k])
+            for k, s in enumerate(cell.NMDA_meta):
+                if (k % sparse_plot) == 1:
+                    idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                    ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
+                            color=color_NMDA, marker='^', markersize=min_size + (max_size - min_size) * W_NMDA[k])
+            for k, s in enumerate(cell.GABA_meta):
+                if (k % sparse_plot) == 0:
+                    idx = cell.get_idx(s["sec_name"])[s["seg_idx"] - 1]
+                    ax.plot([cell.zmid[idx]], [cell.ymid[idx]],
+                            color=color_GABA, marker='^', markersize=min_size + (max_size - min_size) * W_GABA[k])
 
     if electrode is not None:
         ax.scatter(electrode.z, electrode.y,
-                c=color_electrode.reshape(1,3),cmap = 'viridis',  marker='o', s=20)
+                c=electrode.y[0]-electrode.y,cmap = 'viridis',  marker='o', s=20)
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -359,16 +361,17 @@ def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst, T_range = None):
 def plot_aligned_beta(LFP, t):
     plt.figure()
     norm_color = matplotlib.colors.Normalize(vmin=0.0, vmax=63.0, clip=True)
-    mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.cool)
+    mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.viridis)
     for i in range(LFP.shape[0]):
-        plt.plot(t, LFP[i, :] - np.max(np.max(LFP)) / 5 * i, color=mapper.to_rgba(i))
+        # plt.plot(t, LFP[i, :] - np.max(np.max(LFP)) / 5 * i, color=mapper.to_rgba(i))
+        plt.plot(t, LFP[i, :] - 100 * i, color=mapper.to_rgba(i))
     plt.xlim([-0.05, 0.05])
-    plt.ylim([-5000, 500])
+    # plt.ylim([-5000, 500])
     plt.show()
 
 def plot_CSD(CSD, t, x, c_range = [-2e5, 2e5]):
     plt.figure()
-    plt.imshow(CSD, origin='upper', cmap='jet', extent=[t[0] * 1e3, t[-1] * 1e3, x[-1], x[0]], aspect=1 / 5, vmin=c_range[0], vmax=c_range[1])
+    plt.imshow(CSD, origin='upper', cmap='gray', extent=[t[0] * 1e3, t[-1] * 1e3, x[-1], x[0]], aspect=1 / 5, vmin=c_range[0], vmax=c_range[1])
     plt.colorbar()
     plt.xlim([-50, 50])
     plt.show()

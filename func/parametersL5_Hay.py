@@ -10,7 +10,7 @@ from neuron import h
 
 def init_params(wd):
     """ Create dictionary of model parameters """
-    # neuron.load_mechanisms(wd + "\\mod")
+    neuron.load_mechanisms(wd + "\\mod")
     neuron.load_mechanisms(wd + "\\mod_stochastic")
     param_file = wd + "\\input\\biophys4.json"
 
