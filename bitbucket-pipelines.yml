@@ -6,6 +6,6 @@ pipelines:
         clone:
           enabled: false
         script:
-          - git clone --bare https://ShulanX@bitbucket.org/ShulanX/l5_beta.git
+          - git clone --bare git@bitbucket.org:ShulanX/l5_beta.git
           - cd RepoName.git
-          - git push --mirror https://github.com/shulanx1/l5_beta.git
+          - git push --mirror git@github.com:shulanx1/l5_beta.git
