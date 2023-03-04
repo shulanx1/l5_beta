@@ -1,0 +1,11 @@
+pipelines:
+  default:
+    - step:
+        name: Sync GitHub Mirror
+        image: alpine/git:latest
+        clone:
+          enabled: false
+        script:
+          - git clone --bare https://ShulanX@bitbucket.org/ShulanX/l5_beta.git
+          - cd RepoName.git
+          - git push --mirror https://github.com/shulanx1/l5_beta.git
