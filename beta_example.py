@@ -1,7 +1,7 @@
 #%%
 import sys
 import os
-wd = 'C:\\work\\Code\\l5_beta' # working directory
+wd = 'E:\\Code\\l5_beta' # working directory
 sys.path.insert(1, wd)
 import LFPy
 
@@ -18,6 +18,7 @@ from func import visualization
 from func import sequences
 from func import beta
 import scipy.io as sio
+import time
 
 for loop in range(1,6):
     result_file = 'input085_percentage03_no_stochastic_%d.mat' % loop
@@ -26,7 +27,7 @@ for loop in range(1,6):
     T = 20000        # simulation time (ms)
     dt = 0.1        # time step (ms)
     v_init = -75    # initial voltage (mV)
-    seed = 1        # random seed
+    seed = int(time.time())        # random seed
 
     P = parametersL5_Hay.init_params(wd)
     np.random.seed(seed)
@@ -63,7 +64,7 @@ for loop in range(1,6):
     M = electrode.calc_mapping(cell)   # use M = elestrode.get_transformation_matrix(cell) for newer version of LFPy
 
     ### Run Simulation ###
-    rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.6, 1)
+    rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.5, 1)
     S_e = sequences.build_rate_seq(rates_e[0], 0, T)
     S_i = sequences.build_rate_seq(rates_i[0], 0, T)
     t, v = cell.simulate(T, dt, v_init, S_e, S_i)
@@ -129,4 +130,4 @@ for loop in range(1,6):
 
     lfp = M @ cell.imem
     lfp = lfp*1e3 #unit in uV
-    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_apicinh, if_plot = 0, if_save = 0)
+    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_apicinh, if_plot = 0, if_save = 1)

@@ -1380,7 +1380,23 @@ class L5Model:
             con_list.append(h.NetCon(stim, syn, 0, 0, weights[k]))
         return t_vec_list, stim_list, con_list
 
-    def simulate(self, T, dt, v_init, S_e, S_i, I_inj=0, break_flag=False, inj_site='soma[0]'):
+    def record_syn_current(self, syns):
+        syn_current_list = []
+        for k, syn in enumerate(syns):
+            i_vec = h.Vector()
+            i_vec.record(syn._ref_i, self.dt)
+            syn_current_list.append(i_vec)
+        return syn_current_list
+
+    def record_syn_conductance(self, syns):
+        syn_g_list = []
+        for k, syn in enumerate(syns):
+            g_vec = h.Vector()
+            g_vec.record(syn._ref_g, self.dt)
+            syn_g_list.append(g_vec)
+        return syn_g_list
+
+    def simulate(self, T, dt, v_init, S_e, S_i, I_inj=0, break_flag=False, inj_site='soma[0]', record_syn = False):
         """Run simulation and record voltage from every compartment.
 
         Parameters
@@ -1421,9 +1437,9 @@ class L5Model:
         # ik = []
         # ica = []
         # ihcn = []
-        # iGABA = []
-        # iAMPA = []
-        # iNMDA = []
+        gGABA = []
+        gAMPA = []
+        gNMDA = []
         cvode = neuron.h.CVode()
         try:
             cvode.use_fast_imem(1)
@@ -1447,9 +1463,16 @@ class L5Model:
             nc.threshold = 0
             nc.record(self.halt)
 
+        if record_syn:
+            gAMPA = self.record_syn_conductance(self.AMPA)
+            gNMDA = self.record_syn_conductance(self.NMDA)
+            gGABA = self.record_syn_conductance(self.GABA)
         h.v_init = v_init
         h.tstop = T
         h.run()
+        self.gAMPA = np.asarray(gAMPA)
+        self.gGABA = np.asarray(gGABA)
+        self.gNMDA = np.asarray(gNMDA)
         t = np.array(t)
         v = np.array(v)
         self.imem = np.asarray(i)

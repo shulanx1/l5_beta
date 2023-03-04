@@ -5,7 +5,7 @@ Functions for generating sets of random presynaptic spike sequences.
 import numpy as np
 import numba as nb
 from itertools import permutations
-
+import random
 
 class PreSyn:
     """
@@ -187,6 +187,120 @@ def build_rate_seq(rates, T0, T):
         s_k_pad[j, :n] = s
     return s_k_pad
 
+def gen_poisson_spikes(FR, t_win, dt = 0.025, tstop = 250):
+    """
+    generate poisson spike given firing rate trace
+
+    :param FR: ndarray (spike/s), firing rate at each time window
+    :param t_win: (ms) length of time window
+    :param dt: (ms), default 0.025
+    :param tstop: (ms), default 250
+    :return:
+        spike_train: ndarray (ms), time point of spiking
+    """
+    t_squ = np.arange(0, tstop+t_win, t_win)
+    spike_train = []
+    if FR.size < t_squ.size - 1:
+        warnings.warn('Not enough firing rates, will attach zeros to the end')
+        np.append(FR, np.zeros(t_squ.size - 1 - FR.size))
+    for i, fr in zip(range(t_squ.size - 1), FR):
+        t_spike = t_squ[i]
+        if fr <= 0:
+            continue
+        while t_spike < t_squ[i + 1]:
+            a = np.random.exponential(1 / fr)
+            t_spike = t_spike + a
+            if (t_spike < t_squ[i + 1]) & (a > 0):
+                spike_train.append(t_spike)
+    spike_train = np.asarray(spike_train)
+    return spike_train
+
+
+def build_rate_seq_modulated(rates, T0, T, mod_freq, mod_list = [], t_win = 10, dt = 0.1, mod_amp = 2.5):
+    """Poisson inputs with prescribed rates.
+
+    Parameters
+    ----------
+    rates : array_like
+        presynaptic firing rates for set of synapses
+    T0, T : int
+        initial and final times
+
+    Returns
+    -------
+    s_k_pad : ndarray
+        array of spike times padded with infs
+    """
+    t = np.arange(T0, T+t_win, t_win)
+    s_k = []
+    if mod_freq == 0:
+        if len(mod_list)>0:
+            for i, rate in enumerate(rates):
+                if i in mod_list:
+                    if rate > 0:
+                        rate1 = rate*mod_amp
+                        spike_times = [np.random.exponential(1 / rate1)]
+                    else:
+                        spike_times = [np.inf]
+                    while sum(spike_times) < T - T0:
+                        spike_times.append(np.random.exponential(1 / rate1))
+                    s_k.append(T0 + np.cumsum(spike_times[:-1]))
+                else:
+                    if rate > 0:
+                        spike_times = [np.random.exponential(1 / rate)]
+                    else:
+                        spike_times = [np.inf]
+                    while sum(spike_times) < T - T0:
+                        spike_times.append(np.random.exponential(1 / rate))
+                    s_k.append(T0 + np.cumsum(spike_times[:-1]))
+        else:
+            for rate in rates:
+                if rate > 0:
+                    rate1 = rate * mod_amp
+                    spike_times = [np.random.exponential(1 / rate1)]
+                else:
+                    spike_times = [np.inf]
+                while sum(spike_times) < T - T0:
+                    spike_times.append(np.random.exponential(1 / rate1))
+                s_k.append(T0 + np.cumsum(spike_times[:-1]))
+    else:
+        if len(mod_list)>0:
+            for i, rate in enumerate(rates):
+                if i in mod_list:
+                    if rate > 0:
+                        rate1 = rate*mod_amp/np.sqrt(2)
+                        FR = rate1 * np.sin(2 * np.pi * mod_freq * t / 1000+np.pi/2) + rate1
+                        spike_times = gen_poisson_spikes(FR, t_win, dt, T - T0)
+                    else:
+                        spike_times = [np.inf]
+                    spike_times = np.delete(spike_times, np.where(spike_times<0)[0])
+                    spike_times = np.sort(spike_times, axis=None)
+                    s_k.append(T0 + spike_times)
+                else:
+                    if rate > 0:
+                        spike_times = [np.random.exponential(1 / rate)]
+                    else:
+                        spike_times = [np.inf]
+                    while sum(spike_times) < T - T0:
+                        spike_times.append(np.random.exponential(1 / rate))
+                    s_k.append(T0 + np.cumsum(spike_times[:-1]))
+        else:
+            for rate in rates:
+                if rate > 0:
+                    rate1 = rate * mod_amp
+                    FR = rate1 * np.sin(2 * np.pi * mod_freq * t / 1000+np.pi/2) + rate1
+                    spike_times = gen_poisson_spikes(FR, t_win, dt, T - T0)
+                else:
+                    spike_times = [np.inf]
+                spike_times = np.delete(spike_times, np.where(spike_times < 0)[0])
+                spike_times = np.sort(spike_times, axis = None)
+                s_k.append(T0 + spike_times)
+    num_spikes = [len(s) for s in s_k]
+    s_k_pad = np.full((len(rates), np.max(num_spikes)), np.inf)
+    for j, (n, s) in enumerate(zip(num_spikes, s_k)):
+        s_k_pad[j, :n] = s
+
+    return s_k_pad
 
 def lognormal_rates(p, N_e, N_i, mu, sigma):
     """Log-normally distributed firing rates with mean exp(mu+sigma^2/2)

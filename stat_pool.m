@@ -26,3 +26,35 @@ end
 for i = 1:4
     amp{i} = amp{i}/1e6;
 end
+%%
+datapath = 'E:\Code\l5_beta\outputs\I_1_E_0_8_apical1_5_basal1_5';
+edges = 0:5:200;
+freq = [1,3,5,10,15,20,25,30,40,60, 0];
+for i = 1:length(freq)
+    filename_stat = sprintf('i_mod_%d_stat.mat', freq(i));
+    filename = sprintf('i_mod_%d.mat', freq(i));
+    load(fullfile(datapath, filename));
+    load(fullfile(datapath, filename_stat));
+    isi_hist = histcounts(isi, edges);
+    % figure, bar(edges(1:end-1) + diff(edges)/2, isi_hist), title(sprintf('%d Hz', freq(i)))
+    isi_short(i) = sum(isi_hist(find(edges<20)))/sum(isi_hist);
+    isi_long(i) = sum(isi_hist(find((edges>=60) & (edges < 120))))/sum(isi_hist);
+    beta_power(i) = sum(abs(hilbert(lfp_beta/1e3)).^2);
+    beta_event_count(i) = size(betaBurst, 2);
+    beta_amplitude(i) = mean(beta_amp);
+    beta_itpc(i) = spike_beta_cohe(40);
+    apic_itpc(i) = spike_apicbeta_cohe;
+end
+freq_plot = [1,3,5,10,15,20,25,30,40,60, 100];
+figure
+yyaxis left
+plot(freq_plot, isi_short)
+yyaxis right
+plot(freq_plot, beta_itpc)
+
+figure
+yyaxis left
+plot(freq_plot, beta_power/max(beta_power))
+yyaxis right
+plot(freq_plot, beta_event_count/20)
+

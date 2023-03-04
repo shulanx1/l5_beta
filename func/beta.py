@@ -83,11 +83,16 @@ def customFilt(data, Fs, filtbound = [10.,30.], if_plot = 0):
 
 def bandFilter(lfp, Fs, filtbound = [10., 30.]):
     filtered_lfp = np.zeros(lfp.shape)
+    phase = np.zeros(lfp.shape)
+    amp = np.zeros(lfp.shape)
     power = np.zeros(lfp.shape[0])
     filtered_lfp= customFilt(lfp, Fs, filtbound=filtbound)
     for i in range(lfp.shape[0]):
-        power[i] = 10*np.log10(np.sum(np.abs(signal.hilbert(filtered_lfp[i,:]))**2))
-    return filtered_lfp, power
+        a = signal.hilbert(filtered_lfp[i,:])
+        power[i] = 10*np.log10(np.sum(np.abs(a)**2))
+        phase[i,:] = np.angle(a)
+        amp[i,:] = np.abs(a)
+    return filtered_lfp, power, phase, amp
 
 def betaBurstDetection(Fs, beta_signal,channel = None, window = [0,1000]):
     trialFlag = 0
@@ -290,40 +295,92 @@ def customCSD(LFP, t, spacing, if_plot = 0, smooth = 1, T_range = None):
 
     return CSD, x
 
+def record_apical_inhibition(cell):
+    list_mod = []
+    for i, s in enumerate(cell.GABA_meta):
+        sec_name = s['sec_name']
+        if ('apic' in sec_name) & (int(sec_name[5:-1])>36):
+            list_mod.append(i)
+    gGABA_apic = np.mean(cell.gGABA[list_mod], axis=0)
+    return gGABA_apic
+
+def spike_phase_coherance(phase, vm):
+    spike_idx = []
+    for i in range(1, len(vm[0])):
+        if (vm[0][i]>0) & (vm[0][i-1]<0):
+            spike_idx.append(i)
+    vs = np.zeros(phase.shape[0])
+    if len(spike_idx)>0:
+        for i in range(phase.shape[0]):
+            vs[i] = np.abs(np.sum(np.exp(1j*phase[i,spike_idx]))/len(spike_idx))
+    return vs
+
+def band_phase_coherance(phase1, amp2):
+
+    vs = np.zeros(phase1.shape[0])
+    for i in range(phase1.shape[0]):
+        vs[i] = np.abs(np.sum(np.exp(1j*(phase1[i,:]))*amp2[i,:]))/np.sum(amp2[i,:])
+    return vs
+
+def spike_apic_coherance(vm, Fs, filtbound = [10., 30.]):
+    spike_idx = []
+    for i in range(1, len(vm[0])):
+        if (vm[0][i]>0) & (vm[0][i-1]<0):
+            spike_idx.append(i)
+    [apic_narrow, power, phase, amp] = bandFilter(vm[1:2,:], Fs, filtbound = filtbound)
+    if len(spike_idx)>0:
+        vs = np.abs(np.sum(np.exp(1j*phase[0,spike_idx]))/len(spike_idx))
+    return vs
+
 def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
     # M = electrode.calc_mapping(cell)
     # lfp = M @ cell.imem
     lfp = lfp * 1e3  # unit in uV
-
     Fs = 1 / (cell.dt / 1000.)
     lfp_low = lowpass_filter_lfp(lfp, Fs, Fc=500.)
-    [lfp_beta, power] = bandFilter(lfp_low, Fs)
+    [lfp_beta, power, phase_beta, amp_beta] = bandFilter(lfp_low, Fs, filtbound = [10., 30.])
+    [lfp_theta, power, phase_theta, amp_theta] = bandFilter(lfp_low, Fs, filtbound = [4.0, 10.0])
     betaBurst_all = betaBurstDetection(Fs, lfp_beta, channel=None)
     if if_plot:
         visualization.plot_beta_event(lfp, lfp_beta, np.arange(0, 64, 10), cell, betaBurst_all)
-
-    [LFP_beta_narrow, t_CSD] = betaEvent(lfp_beta, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
-    [LFP_beta_broad, t_CSD] = betaEvent(lfp, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
+    idx_beta = 13# np.argmax(power)
+    [LFP_beta_narrow, t_CSD] = betaEvent(lfp_beta, [betaBurst_all[idx_beta]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
+    # [LFP_beta_broad, t_CSD] = betaEvent(lfp, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
     spacing = electrode.y[0]-electrode.y[1]
-    [CSD, x_CSD] = customCSD(LFP_beta_narrow, t_CSD, spacing, if_plot=1, smooth=1)
+    [CSD, x_CSD] = customCSD(LFP_beta_narrow, t_CSD, spacing, if_plot=if_plot, smooth=1)
+    Vm = visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]', 'apic[61]'], [0, cell.tvec[-1]], if_plot=if_plot)
+    vs1 = spike_phase_coherance(phase_beta, Vm)
+    vs2 = band_phase_coherance(phase_theta, amp_beta)
+    vs3 = spike_apic_coherance(Vm, Fs, filtbound = [10., 30.])
+    gGABA_apic = record_apical_inhibition(cell)
     data = {'t': cell.tvec,
             'Fs': Fs,
-            'vm': cell.vmem,
-            'im': cell.imem,
+            'vm': Vm,
+            'gGABA': gGABA_apic,
+            # 'im': cell.imem,
             'lfp': lfp,
-            'lfp_beta': lfp_beta[12],
-            'betaBurst': betaBurst_all[13],
+            'idx_beta': idx_beta,
+            'lfp_beta': lfp_beta[idx_beta],
+            'lfp_theta': lfp_theta[idx_beta],
+            'betaBurst': betaBurst_all[idx_beta],
             'LFP_beta_narrow': LFP_beta_narrow,
-            'LFP_beta_broad': LFP_beta_broad,
+            # 'LFP_beta_broad': LFP_beta_broad,
             't_CSD': t_CSD,
             'x_CSD': x_CSD,
             'CSD': CSD}
     if if_save:
         sio.savemat(result_file, data)
 
+    betaBurst = betaBurst_all[idx_beta]
     beta_dur = []
     beta_amp = []
     beta_num = betaBurst.shape[1]
+    spike_time = []
+    for i in range(1, len(Vm[0])):
+        if (Vm[0][i]>0) & (Vm[0][i-1]<0):
+            spike_time.append(cell.tvec[i])
+    spike_time = np.asarray(spike_time)
+    isi = np.diff(spike_time)
 
     for i in range(betaBurst.shape[1]):
         beta_amp.append(betaBurst[3, i])
@@ -334,10 +391,17 @@ def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
     datastat = {
         'beta_amp': beta_amp,
         'beta_dur': beta_dur,
-        'beta_num': beta_num
+        'beta_num': beta_num,
+        'spike_time': spike_time,
+        'spike_beta_cohe': vs1,
+        'beta_theta_cohe': vs2,
+        'spike_apicbeta_cohe': vs3,
+        'isi': isi
     }
 
     if if_save:
         sio.savemat(result_file[:-4] + '_stat.mat', datastat)
     return data
+
+
 
