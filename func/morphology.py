@@ -4,7 +4,11 @@ Functions for defining morphology and synapse placement.
 #%%
 import numpy as np
 import neurom
-
+import posixpath
+import sys
+import os
+import neuron
+from neuron import h
 
 def synapse_locations_rand(secs, N, nseg, seed):
     """Build array of random synapse locations.
@@ -68,75 +72,106 @@ def reconstruction(filename):
     sec : list
         section indices
     """
+    fileEnding = filename.split('.')[-1]
+    if fileEnding == 'hoc' or fileEnding == 'HOC':
+        if "win32" in sys.platform and type(filename) is str:
+            # fix Path on windows
+            filename = filename.replace(os.sep, posixpath.sep)
+        neuron.h.load_file(1, filename)
+        L = []
+        a = []
+        soma = []
+        apical = []
+        basal = []
+        trunk = []
+        axon = []
+        for i, sec in enumerate(h.allsec()):
+            L.append(sec.L*1e-4)
+            a.append(np.asarray([sec.diam3d(j)/2*1e-4 for j in range(sec.n3d())]))
+            if 'soma' in sec.name():
+                soma.append(i)
+            elif 'dend' in sec.name():
+                basal.append(i)
+            elif 'apic' in sec.name():
+                apical.append(i)
+            elif 'axon' in sec.name():
+                axon.append(i)
+        
+        L = np.array(L)
+        sec_points = None
+        secs = basal + apical + trunk
+        M = len(L)
+        A = np.zeros((M,M))
 
-    nrn = neurom.load_neuron(filename)
-
-    num_sp = nrn.soma.points.shape[0]
-    a_soma = nrn.soma.radius
-    if num_sp == 1:
-        L_soma = 2*a_soma
     else:
-        if hasattr(nrn.soma, "area"):
-            L_soma = nrn.soma.area/(2*np.pi*a_soma)
+        nrn = neurom.load_neuron(filename)
+
+        num_sp = nrn.soma.points.shape[0]
+        a_soma = nrn.soma.radius
+        if num_sp == 1:
+            L_soma = 2*a_soma
         else:
-            L_soma = nrn.sections[0].area/(2 * np.pi * a_soma)
-    soma = [sec.id for sec in nrn.sections if sec.type.name == 'soma']
-    num_ss = len(soma)
-    tree_points = [sec.points for sec in nrn.sections[num_ss:]]
-    L = [L_soma*1e-4]
-    a = [a_soma*1e-4]
-    for points in tree_points:
-        path = points[:, :3]
-        path = (np.sum(np.diff(path, axis=0)**2, axis=1))**0.5
-        path = np.insert(np.cumsum(path), 0, 0)*1e-4
-        a_sec = points[:, 3]*1e-4				# (cm)
-        L.append(path[-1])
-        a.append([path, a_sec])
-    L = np.array(L)
-
-    if num_sp == 3:
-        s_points = np.zeros((2, tree_points[0].shape[1]))
-        s_points[0, :4] = nrn.soma.points[1]
-        s_points[1, :4] = nrn.soma.points[2]
-    elif num_sp > 3:
-        s_points = np.zeros((2, tree_points[0].shape[1]))
-        s_points[0, :4] = nrn.soma.points[0]
-        s_points[1, :4] = np.mean(nrn.soma.points, axis=0)
-    else:
-        s_points = np.zeros((2, tree_points[0].shape[1]))
-        s_points[1, :4] = nrn.soma.points[0]
-
-    sec_points = [s_points] + tree_points
-    parents = []
-    for sec in nrn.sections[num_ss:]:
-        if sec.parent is not None:
-            parents.append(sec.parent.id - (num_ss - 1))
+            if hasattr(nrn.soma, "area"):
+                L_soma = nrn.soma.area/(2*np.pi*a_soma)
+            else:
+                L_soma = nrn.sections[0].area/(2 * np.pi * a_soma)
+        soma = [sec.id for sec in nrn.sections if sec.type.name == 'soma']
+        num_ss = len(soma)
+        tree_points = [sec.points for sec in nrn.sections[num_ss:]]
+        L = [L_soma*1e-4]
+        a = [a_soma*1e-4]
+        for points in tree_points:
+            path = points[:, :3]
+            path = (np.sum(np.diff(path, axis=0)**2, axis=1))**0.5
+            path = np.insert(np.cumsum(path), 0, 0)*1e-4
+            a_sec = points[:, 3]*1e-4				# (cm)
+            L.append(path[-1])
+            a.append([path, a_sec])
+        L = np.array(L)
+    
+        if num_sp == 3:
+            s_points = np.zeros((2, tree_points[0].shape[1]))
+            s_points[0, :4] = nrn.soma.points[1]
+            s_points[1, :4] = nrn.soma.points[2]
+        elif num_sp > 3:
+            s_points = np.zeros((2, tree_points[0].shape[1]))
+            s_points[0, :4] = nrn.soma.points[0]
+            s_points[1, :4] = np.mean(nrn.soma.points, axis=0)
         else:
-            parents.append(0)
-    parents = np.array(parents)
-
-    M = len(sec_points)
-    A = np.zeros((M, M))
-    for k, p in enumerate(parents):
-        A[p, k + 1] = 1
-    axon = [sec.id for sec in nrn.sections if sec.type.name == 'axon']
-    basal = [sec.id for sec in nrn.sections if sec.type.name == 'basal_dendrite']
-    apical = [sec.id for sec in nrn.sections if sec.type.name == 'apical_dendrite']
-    trunk = [sec.id for sec in nrn.sections if sec.type.name == 'all']
-    relabel = []
-    for ind in basal:
-        if nrn.sections[ind].parent is not None and nrn.sections[ind].parent.type.name == 'axon':
-            relabel.append(ind)
-    axon = (axon + relabel)
-    axon.sort()
-    for ind in relabel:
-        basal.remove(ind)
-
-    axon = [a - (num_ss - 1) for a in axon]
-    basal = [b - (num_ss - 1) for b in basal]
-    apical = [ap - (num_ss - 1) for ap in apical]
-    trunk = [tr - (num_ss - 1) for tr in trunk]
-    secs = basal + apical + trunk
+            s_points = np.zeros((2, tree_points[0].shape[1]))
+            s_points[1, :4] = nrn.soma.points[0]
+    
+        sec_points = [s_points] + tree_points
+        parents = []
+        for sec in nrn.sections[num_ss:]:
+            if sec.parent is not None:
+                parents.append(sec.parent.id - (num_ss - 1))
+            else:
+                parents.append(0)
+        parents = np.array(parents)
+    
+        M = len(sec_points)
+        A = np.zeros((M, M))
+        for k, p in enumerate(parents):
+            A[p, k + 1] = 1
+        axon = [sec.id for sec in nrn.sections if sec.type.name == 'axon']
+        basal = [sec.id for sec in nrn.sections if sec.type.name == 'basal_dendrite']
+        apical = [sec.id for sec in nrn.sections if sec.type.name == 'apical_dendrite']
+        trunk = [sec.id for sec in nrn.sections if sec.type.name == 'all']
+        relabel = []
+        for ind in basal:
+            if nrn.sections[ind].parent is not None and nrn.sections[ind].parent.type.name == 'axon':
+                relabel.append(ind)
+        axon = (axon + relabel)
+        axon.sort()
+        for ind in relabel:
+            basal.remove(ind)
+    
+        axon = [a - (num_ss - 1) for a in axon]
+        basal = [b - (num_ss - 1) for b in basal]
+        apical = [ap - (num_ss - 1) for ap in apical]
+        trunk = [tr - (num_ss - 1) for tr in trunk]
+        secs = basal + apical + trunk
     return A, L, a, sec_points, secs, basal, apical, trunk, axon
 
 

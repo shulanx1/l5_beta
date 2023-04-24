@@ -329,15 +329,17 @@ def plot_electrode_LFP_1D(LFP, cell, electrode, time_range, if_plot_morphology =
         cbar = plt.colorbar(mapper, ax=ax)
         cbar.set_label('LFP (uV)', rotation=270)
     plt.show()
-#%%
+
 def plot_beta_event(lfp, beta_lfp, channel, cell, betaBurst, T_range = None):
     if isinstance(channel, int) or isinstance(channel, float):
         channel = [channel]
     t = np.arange(beta_lfp.shape[1])*cell.dt
     fig, axs = plt.subplots(1+len(channel), 1)
     axs[0].plot(t, cell.vmem[0])
-    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[36]'))))])
-    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[60]'))))])
+    # axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[36]'))))])  L5
+    # axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[60]'))))])  L5
+    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[10]'))))])
+    axs[0].plot(t, cell.vmem[int(np.round(np.median(cell.get_idx('apic[11]'))))])
     if T_range == None:
         axs[0].set_xlim(t[0], t[-1])
     else:

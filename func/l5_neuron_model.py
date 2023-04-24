@@ -106,7 +106,7 @@ def distribute_channels_linear(cell, sec_name, mec, value_name, value, verbool =
                     print('Setting %s to %.6g in %s'
                           % (value_name, value[0] + d * value[1], sec.name()))
                 seg_mec = getattr(seg, str(mec))
-                setattr(sec_mec, value_name, value[0] + d * value[1])
+                setattr(seg_mec, value_name, value[0] + d * value[1])
 
 
 def distribute_channels_step(cell, sec_name, mec, value_name, value, verbool = False):
@@ -271,26 +271,64 @@ class L5Model:
         self.verbool = verbool
         A, nseg, L, a, sec_points, self.sec_e, self.sec_i, self.b_type_e, self.b_type_i, self.basal, self.apical, self.trunk, self.axon = \
             self.define_morphology()
-        _, a_s, _ = morphology.seg_geometry(L, a, nseg)
-        self.tree, self.seg_list, self.seg_e, self.seg_i = \
-            self.create_sections(A, L, a_s, nseg, sec_points)
+
+        filename = P['tree']
+        fileEnding = filename.split('.')[-1]
+        if fileEnding == 'hoc' or fileEnding == 'HOC':
+            self.tree = []
+            allsecnames = []
+            for sec in neuron.h.allsec():
+                allsecnames.append(sec.name())
+
+            for k, n in enumerate(nseg):
+                sec = self.Section(allsecnames[k])
+                self.tree.append(sec)
+                sec.L = L[k] * 1e4  # (um)
+                sec.nseg = nseg[k]
+
+            j = 0
+            seg_list = []
+            for num, sec in enumerate(self.tree):
+                for k in range(sec.nseg):
+                    seg_list.append([num, (k + 1 / 2) / sec.nseg, j])
+                    j += 1
+            self.seg_list = np.array(seg_list)
+    
+            self.seg_e = np.array([np.where(np.sum(np.abs(self.seg_list[:, :2] - sec), 1) < 1e-15)[0][0]
+                              for sec in self.sec_e.T])
+            self.seg_i = np.array([np.where(np.sum(np.abs(self.seg_list[:, :2] - sec), 1) < 1e-15)[0][0]
+                              for sec in self.sec_i.T])
+        else:
+            _, a_s, _ = morphology.seg_geometry(L, a, nseg)
+            self.tree, self.seg_list, self.seg_e, self.seg_i = \
+                self.create_sections(A, L, a_s, nseg, sec_points)
+
+
+
         self.build_tree(A)
         self.nseg = nseg
-        if 'data' not in P:
-            f = open(P["param_file"])
-            P['data'] = json.load(f)
-        if 'if_stochastic' not in P:
-            self.if_stochastic = False
+        if 'param_file' not in P:
+            self.define_biophysics_l23()
+            self.insert_active_l23()
+            if P['active_d']:
+                self.insert_active_dend_l23()
         else:
-            self.if_stochastic = P['if_stochastic']
-        self.data = P['data']
-        self.insert_active()
-        self.insert_active_gradient()
-        if P['active_d']:
-            if self.if_stochastic:
-                self.insert_active_basal_stochastic()
+            if 'data' not in P:
+                f = open(P["param_file"])
+                P['data'] = json.load(f)
+            if 'if_stochastic' not in P:
+                self.if_stochastic = False
             else:
-                self.insert_active_basal()
+                self.if_stochastic = P['if_stochastic']
+            self.data = P['data']
+            self.insert_active()
+            if 'gradient' in P['data']:
+                self.insert_active_gradient()
+            if P['active_d']:
+                if self.if_stochastic:
+                    self.insert_active_basal_stochastic()
+                else:
+                    self.insert_active_basal()
         self.AMPA = self.attach_ampa(self.sec_e)
         self.GABA = self.attach_gaba(self.sec_i)
         if P['active_n']:
@@ -325,6 +363,7 @@ class L5Model:
         for sec in h.allsec():
             if sec.name()==name:
                 return sec
+
 
     def define_morphology(self):
         """ Create adjacency matrix, lists of segment numbers and dimensions,
@@ -383,6 +422,7 @@ class L5Model:
         sec_i = morphology.synapse_locations_rand(locs_i, N_i, nseg[locs_i], 0)
         b_type_e = morphology.branch_type(sec_e, branch_ids)
         b_type_i = morphology.branch_type(sec_i, branch_ids)
+        self.totnsegs = np.sum(nseg)
         return A, nseg, L, a, sec_points, sec_e, sec_i, b_type_e, b_type_i, basal, apical, trunk, axon
 
     def create_sections(self, A, L, a_s, nseg, sec_points):
@@ -462,6 +502,7 @@ class L5Model:
                 seg.diam = 2 * a_s[j] * 1e4
                 j += 1
         # soma.L = L[0]*1e4
+        tree[0].L = L[0] * 1e4
 
         j = 0
         seg_list = []
@@ -476,6 +517,8 @@ class L5Model:
         seg_i = np.array([np.where(np.sum(np.abs(seg_list[:, :2] - sec), 1) < 1e-15)[0][0]
                           for sec in self.sec_i.T])
         return tree, seg_list, seg_e, seg_i
+
+
 
     def build_tree(self, A):
         """Connect sections to form tree (tree[0]=soma)
@@ -580,6 +623,8 @@ class L5Model:
         self.xmid = .5 * (self.xstart + self.xend).flatten()
         self.ymid = .5 * (self.ystart + self.yend).flatten()
         self.zmid = .5 * (self.zstart + self.zend).flatten()
+
+        self.somapos = np.asarray([self.xmid[0], self.ymid[0], self.zmid[0]])
 
     def _get_idx(self, seclist):
         """Return boolean vector which indexes where segments in seclist
@@ -686,18 +731,6 @@ class L5Model:
             ERRMSG = 'idx0 and idx1 must be ints on [0, %i]' % self.totnsegs
             raise ValueError(ERRMSG)
 
-    def define_biophysics(self):
-        """Set biophysical parameters with unit conversions."""
-        if 'c_m_d' not in self.P:
-            self.P['c_m_d'] = self.P['c_m']
-        for sec in self.tree:
-            sec.Ra = self.P['R_a'] * 1e3  # (ohm cm)
-            sec.cm = self.P['c_m_d']
-            sec.insert('pas')
-            sec.g_pas = self.P['c_m_d'] / self.P['tau_m'] * 1e-3  # (S/cm^2)
-            sec.e_pas = self.P['E_r']
-        self.tree[0].cm = self.P['c_m']
-        self.tree[0].g_pas = self.P['c_m'] / self.P['tau_m'] * 1e-3
 
     def attach_ampa(self, E):
         """Attach double exponential AMPA synapses.
@@ -835,7 +868,10 @@ class L5Model:
             stochastic_channel = []
         else:
             if_stochastic = self.P['if_stochastic']
-            stochastic_channel = self.P['stochastic_channel']
+            if self.P['if_stochastic']:
+                stochastic_channel = self.P['stochastic_channel']
+            else:
+                stochastic_channel = []
 
         # Set fixed passive properties
         for sec in h.allsec():
@@ -1271,6 +1307,49 @@ class L5Model:
                     else:
                         seg.g_pas = 3e-5
                         seg.cm = 1
+
+
+    def define_biophysics_l23(self):
+        """Set biophysical parameters with unit conversions."""
+        if 'c_m_d' not in self.P:
+            self.P['c_m_d'] = self.P['c_m']
+        for sec in self.tree:
+            sec.Ra = self.P['R_a'] * 1e3  # (ohm cm)
+            sec.cm = self.P['c_m_d']
+            sec.insert('pas')
+            sec.g_pas = self.P['c_m_d'] / self.P['tau_m'] * 1e-3  # (S/cm^2)
+            sec.e_pas = self.P['E_r']
+        self.tree[0].cm = self.P['c_m']
+        self.tree[0].g_pas = self.P['c_m'] / self.P['tau_m'] * 1e-3
+
+    def insert_active_l23(self):
+        """Insert Na and K (fast and slow) channels at soma."""
+        self.tree[0].insert('hh2')
+        self.tree[0].gnabar_hh2 = self.P['g_na']*1e-3  # S/cm^2
+        self.tree[0].gkbar_hh2 = self.P['g_k']*1e-3  # S/cm^2
+        self.tree[0].vtraub_hh2 = self.P['v_th']
+        self.tree[0].insert('im')
+        self.tree[0].gkbar_im = self.P['g_km']*1e-3  # S/cm^2
+        self.tree[0].taumax_im = self.P['t_max']  # ms
+        self.tree[0].ek = self.P['E_k']
+        self.tree[0].ena = self.P['E_na']
+        self.tree[0].insert('Ih')
+        self.tree[0].gIhbar_Ih = self.P['g_Ih']*1e-3  # S/cm^2
+
+    def insert_active_dend_l23(self):
+        """Insert Na and K (fast and slow) channels in dendrites."""
+        for dend in self.tree[1:]:
+            dend.insert('hh2')
+            dend.gnabar_hh2 = self.P['g_na_d']*1e-3  # S/cm^2
+            dend.gkbar_hh2 = self.P['g_k_d']*1e-3  # S/cm^2
+            dend.vtraub_hh2 = self.P['v_th']
+            dend.insert('im')
+            dend.gkbar_im = self.P['g_km_d']*1e-3  # S/cm^2
+            dend.taumax_im = self.P['t_max']  # ms
+            dend.ek = self.P['E_k']
+            dend.ena = self.P['E_na']
+            dend.insert('Ih')
+            dend.gIhbar_Ih = self.P['g_Ih_d'] * 1e-3  # S/cm^2
 
     def set_deficit_NMDA(self, sec_name = 'all', percentage = 0.0):
         if sec_name == 'all':
@@ -1805,5 +1884,171 @@ class L5Model:
 
 
 
+    def set_rotation(self, x=None, y=None, z=None, rotation_order='xyz'):
+        """
+        Rotate geometry of cell object around the x-, y-, z-axis in the order
+        described by rotation_order parameter.
+        rotation_order should be a string with 3 elements containing x, y, and z
+        e.g. 'xyz', 'zyx'
+
+        Input should be angles in radians.
+
+        using rotation matrices, takes dict with rot. angles,
+        where x, y, z are the rotation angles around respective axes.
+        All rotation angles are optional.
+
+        Examples
+        --------
+        >>> cell = LFPy.Cell(**kwargs)
+        >>> rotation = {'x' : 1.233, 'y' : 0.236, 'z' : np.pi}
+        >>> cell.set_rotation(**rotation)
+        """
+        if type(rotation_order) is not str:
+            raise AttributeError('rotation_order must be a string')
+        elif 'x' not in rotation_order or 'y' not in rotation_order or 'z' not in rotation_order:
+            raise AttributeError("'x', 'y', and 'z' must be in rotation_order")
+        elif len(rotation_order) != 3:
+            raise AttributeError("rotation_order should have 3 elements (e.g. 'zyx')")
+
+        for ax in rotation_order:
+            if ax == 'x' and x is not None:
+                theta = -x
+                rotation_x = np.array([[1, 0, 0],
+                                       [0, np.cos(theta), -np.sin(theta)],
+                                       [0, np.sin(theta), np.cos(theta)]])
+
+                rel_start, rel_end = self._rel_positions()
+
+                rel_start = np.dot(rel_start, rotation_x)
+                rel_end = np.dot(rel_end, rotation_x)
+
+                self._real_positions(rel_start, rel_end)
+                if self.verbool:
+                    print('Rotated geometry %g radians around x-axis' % (-theta))
+            else:
+                if self.verbool:
+                    print('Geometry not rotated around x-axis')
+
+            if ax == 'y' and y is not None:
+                phi = -y
+                rotation_y = np.array([[np.cos(phi), 0, np.sin(phi)],
+                                       [0, 1, 0],
+                                       [-np.sin(phi), 0, np.cos(phi)]])
+
+                rel_start, rel_end = self._rel_positions()
+
+                rel_start = np.dot(rel_start, rotation_y)
+                rel_end = np.dot(rel_end, rotation_y)
+
+                self._real_positions(rel_start, rel_end)
+                if self.verbool:
+                    print('Rotated geometry %g radians around y-axis' % (-phi))
+            else:
+                if self.verbool:
+                    print('Geometry not rotated around y-axis')
+
+            if ax == 'z' and z is not None:
+                gamma = -z
+                rotation_z = np.array([[np.cos(gamma), -np.sin(gamma), 0],
+                                       [np.sin(gamma), np.cos(gamma), 0],
+                                       [0, 0, 1]])
+
+                rel_start, rel_end = self._rel_positions()
+
+                rel_start = np.dot(rel_start, rotation_z)
+                rel_end = np.dot(rel_end, rotation_z)
+
+                self._real_positions(rel_start, rel_end)
+                if self.verbool:
+                    print('Rotated geometry %g radians around z-axis' % (-gamma))
+            else:
+                if self.verbool:
+                    print('Geometry not rotated around z-axis')
 
 
+
+
+    def set_pos(self, x=0., y=0., z=0.):
+        """Set the cell position.
+
+        Move the cell geometry so that midpoint of soma section is
+        in (x, y, z). If no soma pos, use the first segment
+
+        Parameters
+        ----------
+        x : float
+            x position defaults to 0.0
+        y : float
+            y position defaults to 0.0
+        z : float
+            z position defaults to 0.0
+        """
+        diffx = x-self.somapos[0]
+        diffy = y-self.somapos[1]
+        diffz = z-self.somapos[2]
+
+
+        self.somapos[0] = x
+        self.somapos[1] = y
+        self.somapos[2] = z
+
+        self.xstart += diffx
+        self.ystart += diffy
+        self.zstart += diffz
+
+        self.xend += diffx
+        self.yend += diffy
+        self.zend += diffz
+
+        self._calc_midpoints()
+
+
+
+
+    def _calc_midpoints(self):
+        """Calculate midpoints of each segment"""
+        self.xmid = .5*(self.xstart+self.xend).flatten()
+        self.ymid = .5*(self.ystart+self.yend).flatten()
+        self.zmid = .5*(self.zstart+self.zend).flatten()
+
+
+    def _real_positions(self, rel_start, rel_end):
+        """
+        Morphology coordinates relative to Origo
+        """
+        self.xstart = rel_start[:, 0] + self.somapos[0]
+        self.ystart = rel_start[:, 1] + self.somapos[1]
+        self.zstart = rel_start[:, 2] + self.somapos[2]
+
+        self.xend = rel_end[:, 0] + self.somapos[0]
+        self.yend = rel_end[:, 1] + self.somapos[1]
+        self.zend = rel_end[:, 2] + self.somapos[2]
+
+        self._squeeze_me_macaroni()
+        self._calc_midpoints()
+
+    def _squeeze_me_macaroni(self):
+        """
+        Reducing the dimensions of the morphology matrices from 3D->1D
+        """
+        self.xstart = np.array(self.xstart).flatten()
+        self.xend = np.array(self.xend).flatten()
+
+        self.ystart = np.array(self.ystart).flatten()
+        self.yend = np.array(self.yend).flatten()
+
+        self.zstart = np.array(self.zstart).flatten()
+        self.zend = np.array(self.zend).flatten()
+
+    def _rel_positions(self):
+        """
+        Morphology relative to soma position
+        """
+        rel_start = np.array([self.xstart-self.somapos[0],
+                              self.ystart-self.somapos[1],
+                              self.zstart-self.somapos[2]]).T
+        rel_end = np.array([self.xend-self.somapos[0],
+                            self.yend-self.somapos[1],
+                            self.zend-self.somapos[2]]).T
+
+        return rel_start, rel_end

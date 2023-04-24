@@ -1,6 +1,11 @@
+# -*- coding: utf-8 -*-
 """
-Parameters for simulation and training with morphology 1.
+Created on Thu Apr 20 15:12:36 2023
+
+@author: xiao208
 """
+
+
 #%%
 import numpy as np
 import os
@@ -10,10 +15,8 @@ from neuron import h
 
 def init_params(wd):
     """ Create dictionary of model parameters """
-    neuron.load_mechanisms(wd + "\\mod")
-    # neuron.load_mechanisms(wd + "\\mod_NMDA")
-    neuron.load_mechanisms(wd + "\\mod_stochastic")
-    param_file = wd + "\\input\\biophys4.json"
+    neuron.load_mechanisms(wd + "\\mod_l23_allen")
+    param_file = wd + "\\input\\biophys_Allen_l23.json"
 
     f = open(param_file)
     data = json.load(f)
@@ -22,11 +25,10 @@ def init_params(wd):
     genome = data['genome']
     conditions = data['conditions'][0]
 
-    tree = wd + '\\input\\cell1.asc'
+    tree = wd + '\\input\\Allen1_smth.swc'
     if_stochastic = False
-    stochastic_channel = ['na', 'K_Tst', 'NaTs2_t', 'K_Pst', 'Nap_Et2', 'NaTa_t_2F']
-    N_e = 1200  # number of excitatory synapses
-    N_i = 300  # number of inhibitory synapses
+    N_e = 800  # number of excitatory synapses
+    N_i = 200  # number of inhibitory synapses
     soma = [0]
     basal = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85]
     oblique = list(np.asarray([4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,21,22,23,24,25,27,28,29,30,31,32,33,35])+87)
@@ -56,7 +58,7 @@ def init_params(wd):
     E_hcn = -45. # HCN reversal potential (mV)
     v_th = -55.  # Traub and Miles threshold parameter (mV)
     t_max = 0.2e3  # slow K adaptation time scale (ms)
-    active_d = True  # active or passive dendrites
+    active_d = False  # active or passive dendrites
     active_n = True  # active or passive NMDA receptors
 
     P = {'tree': tree,
@@ -89,7 +91,6 @@ def init_params(wd):
          'data': data,
          'param_file': param_file,
          'if_stochastic': if_stochastic,
-         'stochastic_channel': stochastic_channel,
          'v_th': v_th,
          't_max': t_max,
          'active_d': active_d,

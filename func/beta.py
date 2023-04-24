@@ -243,7 +243,7 @@ def betaEvent(lfp_beta, betaBurst, Fs, channel = None, win = [-20,20], if_plot =
     if if_plot:
         plt.figure()
         norm_color = matplotlib.colors.Normalize(vmin=0.0, vmax=63.0, clip=True)
-        mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.cool)
+        mapper = cm.ScalarMappable(norm=norm_color, cmap=cm.viridis)
         for i in range(LFP.shape[0]):
             plt.plot(t, LFP[i,:]-np.max(np.max(LFP))/5*i, color = mapper.to_rgba(i))
         plt.xlim([-0.05, 0.05])
@@ -330,6 +330,8 @@ def spike_apic_coherance(vm, Fs, filtbound = [10., 30.]):
     [apic_narrow, power, phase, amp] = bandFilter(vm[1:2,:], Fs, filtbound = filtbound)
     if len(spike_idx)>0:
         vs = np.abs(np.sum(np.exp(1j*phase[0,spike_idx]))/len(spike_idx))
+    else:
+        vs = 0
     return vs
 
 def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
@@ -348,7 +350,8 @@ def analyze_beta(cell, electrode, lfp, result_file, if_plot = 1, if_save = 1):
     # [LFP_beta_broad, t_CSD] = betaEvent(lfp, [betaBurst_all[13]], Fs, channel=None, win=[-100, 100], if_plot=if_plot)
     spacing = electrode.y[0]-electrode.y[1]
     [CSD, x_CSD] = customCSD(LFP_beta_narrow, t_CSD, spacing, if_plot=if_plot, smooth=1)
-    Vm = visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]', 'apic[61]'], [0, cell.tvec[-1]], if_plot=if_plot)
+    # Vm = visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]', 'apic[61]'], [0, cell.tvec[-1]], if_plot=if_plot)   L5
+    Vm = visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[10]', 'apic[11]'], [0, cell.tvec[-1]], if_plot=if_plot)
     vs1 = spike_phase_coherance(phase_beta, Vm)
     vs2 = band_phase_coherance(phase_theta, amp_beta)
     vs3 = spike_apic_coherance(Vm, Fs, filtbound = [10., 30.])

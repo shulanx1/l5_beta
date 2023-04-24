@@ -6,6 +6,7 @@ import numpy as np
 import numba as nb
 from itertools import permutations
 import random
+import time
 
 class PreSyn:
     """
@@ -173,6 +174,7 @@ def build_rate_seq(rates, T0, T):
         array of spike times padded with infs
     """
     s_k = []
+    np.random.seed(int(time.time()))
     for rate in rates:
         if rate > 0:
             spike_times = [np.random.exponential(1/rate)]
@@ -233,12 +235,13 @@ def build_rate_seq_modulated(rates, T0, T, mod_freq, mod_list = [], t_win = 10, 
     """
     t = np.arange(T0, T+t_win, t_win)
     s_k = []
+    np.random.seed(int(time.time()))
     if mod_freq == 0:
         if len(mod_list)>0:
             for i, rate in enumerate(rates):
                 if i in mod_list:
                     if rate > 0:
-                        rate1 = rate*mod_amp
+                        rate1 = rate*mod_amp*0.6
                         spike_times = [np.random.exponential(1 / rate1)]
                     else:
                         spike_times = [np.inf]
@@ -256,7 +259,7 @@ def build_rate_seq_modulated(rates, T0, T, mod_freq, mod_list = [], t_win = 10, 
         else:
             for rate in rates:
                 if rate > 0:
-                    rate1 = rate * mod_amp
+                    rate1 = rate * mod_amp*0.6
                     spike_times = [np.random.exponential(1 / rate1)]
                 else:
                     spike_times = [np.inf]
@@ -325,6 +328,7 @@ def lognormal_rates(p, N_e, N_i, mu, sigma):
     rates_i = []
     N = N_e + N_i
     for k in range(p):
+        np.random.seed(int(time.time()))
         rates = 1e-3*np.random.lognormal(mu, sigma, N)
         rates_e.append(rates[:N_e])
         rates_i.append(rates[N_e:])

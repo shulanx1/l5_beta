@@ -1,0 +1,195 @@
+{
+  "passive": [
+    {
+      "ra": 150,
+      "e_pas": -75
+    }
+  ], 
+  "conditions": [
+    {
+      "celsius": 37,
+      "erev": [
+        {
+          "ena": 60.0,
+          "section": "soma",
+          "ek": -90.0,
+		  "eca": 140
+        }, 
+        {
+          "ena": 60.0,
+          "section": "axon",
+          "ek": -90.0
+        }, 
+        {
+          "ena": 60.0,
+          "section": "dend",
+          "ek": -90.0,
+		  "eca": 140
+        }
+      ], 
+      "v_init": -75
+    }
+  ], 
+  "genome": [
+    {
+      "section": "soma", 
+      "name": "g_pas", 
+      "value": 1e-5,
+      "mechanism": ""
+    },
+    {
+      "section": "axon", 
+      "name": "g_pas", 
+      "value": 0.02,
+      "mechanism": ""
+    },
+    {
+      "section": "apic", 
+      "name": "g_pas", 
+      "value": 1e-5,
+      "mechanism": ""
+    },
+    {
+      "section": "dend", 
+      "name": "g_pas", 
+      "value": 1e-5,
+      "mechanism": ""
+    },
+    {
+      "section": "soma", 
+      "name": "cm", 
+      "value": 1,
+      "mechanism": ""
+    },
+    {
+      "section": "axon", 
+      "name": "cm", 
+      "value": 1,
+      "mechanism": ""
+    },
+    {
+      "section": "apic", 
+      "name": "cm", 
+      "value": 1,
+      "mechanism": ""
+    },
+    {
+      "section": "dend", 
+      "name": "cm", 
+      "value": 1,
+      "mechanism": ""
+    },
+    {
+      "section": "soma", 
+      "name": "gbar",
+      "value": 1500,
+      "mechanism": "na"
+    },
+    {
+      "section": "soma", 
+      "name": "gbar",
+      "value": 200,
+      "mechanism": "kv"
+    },
+    {
+      "section": "soma",
+      "name": "gbar",
+      "value": 2.2,
+      "mechanism": "km"
+    },
+    {
+      "section": "soma", 
+      "name": "gbar",
+      "value": 2.5,
+      "mechanism": "kca"
+    },
+    {
+      "section": "soma", 
+      "name": "gbar",
+      "value": 0.5,
+      "mechanism": "ca"
+    },
+    {
+      "section": "soma", 
+      "name": "gbar",
+      "value": 0.0003,
+      "mechanism": "it"
+    }, 
+    {
+      "section": "dend",
+      "name": "gbar",
+      "value": 40,
+      "mechanism": "na"
+    },
+        {
+      "section": "dend",
+      "name": "gbar",
+      "value": 30,
+      "mechanism": "kv"
+    },
+    {
+      "section": "dend",
+      "name": "gbar",
+      "value": 0.05,
+      "mechanism": "km"
+    },
+	{
+      "section": "dend",
+      "name": "gbar",
+      "value": 2.5,
+      "mechanism": "kca"
+    },
+    {
+      "section": "dend",
+      "name": "gbar",
+      "value": 0.5,
+      "mechanism": "ca"
+    },
+    {
+      "section": "dend",
+      "name": "gbar",
+      "value": 0.0006,
+      "mechanism": "it"
+    },
+	{
+      "section": "dend",
+      "name": "ghdbar",
+      "value": 0,
+      "mechanism": "hd"
+    },
+    {
+      "section": "axon",
+      "name": "gbar",
+      "value": 30000,
+      "mechanism": "na"
+    },
+    {
+      "section": "axon",
+      "name": "gbar",
+      "value": 400,
+      "mechanism": "kv"
+    }
+  ],
+  "synapse":[
+  {
+    "section": ["soma"],
+    "num": 5,
+    "name": "AMPA"
+  },
+    {
+    "section": ["soma"],
+    "num": 5,
+    "name": "NMDA_Mg"
+  },
+	{
+    "section": ["apic[18]"],
+    "num": 5,
+    "name": "AMPA"
+  },
+  	{
+    "section": ["apic[18]"],
+    "num": 5,
+    "name": "NMDA_Mg"
+  }
+  ]
+}
