@@ -22,7 +22,7 @@ import scipy.io as sio
 import time
 
 # for loop in range(1,6):
-loop = 2
+loop = 1
 result_file = 'L23input0_%d.mat' % loop
 h('forall pop_section()')
 h('forall delete_section()')
@@ -65,16 +65,17 @@ electrodeParameters = {
 }
 electrode = LFPy.RecExtElectrode(cell, **electrodeParameters)
 M = electrode.calc_mapping(cell)   # use M = elestrode.get_transformation_matrix(cell) for newer version of LFPy
-#%%
+
 ### Run Simulation ###
 # h.load_file("stdrun.hoc")
 rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'],0, 1)
+#%%
 S_e = sequences.build_rate_seq(rates_e[0], 0, T)
 S_i = sequences.build_rate_seq(rates_i[0], 0, T)
 t, v = cell.simulate(T, dt, v_init, S_e, S_i)
 visualization.plot_Vm_traces(cell, ['soma', 'apic[10]'], [0,T], if_plot = 1)
 # visualization.plot_nsg(cell,  electrode = electrode, if_plot_synapses = 0, sparse_plot = 8)
-#%%
+
 lfp = M @ cell.imem
 lfp = lfp*1e3 #unit in uV
 

@@ -38,13 +38,15 @@ def create_higherbasal(rates, cell, amp = 2.5):
         rates[i] = rates[i] * amp
     return rates
 
-mod_freqs = [3, 60]
-# mod_freqs = [15]
-for mod_freq in mod_freqs:
-    result_file = 'i_mod_%d.mat' % mod_freq
+# mod_freqs = [0,1,3,5,10,15,20,25,30,40,60]
+mod_freqs = [0]
+for ii in range(1):
+    path_name = wd + '\\outputs\\uniform_I_30_E_8_apical1_5_basal1_2__%d' % ii
+    if not os.path.exists(path_name):
+        os.mkdir(path_name)
     h('forall pop_section()')
     h('forall delete_section()')
-    T = 20000  # simulation time (ms)
+    T = 3000  # simulation time (ms)
     dt = 0.1  # time step (ms)
     v_init = -75  # initial voltage (mV)
     seed = int(time.time())  # random seed
@@ -86,13 +88,23 @@ for mod_freq in mod_freqs:
     ### Run Simulation ###
     rates_e, a = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.8, 1)
     a, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 1, 1.5)
-    rates = create_higherbasal(rates_e[0], cell, amp = 1.5)
-    S_e = sequences.build_rate_seq(rates, 0, T)
+    # rates_e, a = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 2.3, 1)
+    # a, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 3.4, 1.5)
+    # rates_e = [np.repeat(0.008, P['N_e'])]
+    # rates_i = [np.repeat(0.05, P['N_i'])]
+
+    # [rates_e, rates_i] = pickle.load(open(wd + '\\outputs\\rate', 'rb'))
+    rates = create_higherbasal(rates_e[0], cell, amp = 1.2)
     # S_i = sequences.build_rate_seq(rates_i[0], 0, T)
     mod_list = create_tuft_inhibition_mod(cell)
-    S_i = sequences.build_rate_seq_modulated(rates_i[0], 0, T, mod_freq = mod_freq, mod_list = mod_list, mod_amp = 1.5)
-    t, v = cell.simulate(T, dt, v_init, S_e, S_i, record_syn = True)
+    pickle.dump([rates_e, rates_i], open(os.path.join(path_name, 'rate_%d' % ii), 'wb'))
 
-    lfp = M @ cell.imem
-    lfp = lfp * 1e3  # unit in uV
-    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file, if_plot = 1, if_save = 1)
+    for mod_freq in mod_freqs:
+        S_e = sequences.build_rate_seq(rates, 0, T)
+        S_i = sequences.build_rate_seq_modulated(rates_i[0], 0, T, mod_freq = mod_freq, mod_list = mod_list, mod_amp = 1.5)
+        result_file = 'i_mod_%d.mat' % mod_freq
+        t, v = cell.simulate(T, dt, v_init, S_e, S_i, record_syn = True)
+    
+        lfp = M @ cell.imem
+        lfp = lfp * 1e3  # unit in uV
+        data = beta.analyze_beta(cell, electrode, lfp, os.path.join(path_name, result_file), if_plot = 0, if_save = 1)
