@@ -7,8 +7,8 @@ import neuron
 
 def init_params(wd):
     """ Create dictionary of model parameters """
-    # neuron.load_mechanisms("E:\\Toolbox\\Dendrites-master\\mod_files")
-    param_file = wd + '\\input\\biophys_Allen_l23.json'
+    neuron.load_mechanisms( wd + "\\mod_l23")
+    # param_file = wd + '\\input\\biophys_Allen_l23.json'
     tree = wd + '\\input\\Allen1_smth.swc'
     N_e = 800  # number of excitatory synapses
     N_i = 200  # number of inhibitory synapses
