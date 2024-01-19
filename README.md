@@ -23,4 +23,4 @@ LFPy 2.0.3
 
 ### Contact ###
 
-* Please contact xiao208@purdue.edu for any questions
+* Please contact kjayant@purdue.edu for any questions
