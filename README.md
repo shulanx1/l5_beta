@@ -20,7 +20,3 @@ LFPy 2.0.3
 * //outputs: where the results will be saved
 * //beta_example.py: example file, run a 2 second simulation with randomized presynaptic spike train
 
-
-### Contact ###
-
-* Please contact xiao208@purdue.edu for any questions

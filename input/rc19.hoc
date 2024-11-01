@@ -826,5 +826,6 @@ forall {nseg = int(L / (10) + 1)}
 forall {if ((nseg-1)*10>L) {nseg = nseg-1}}
 forall {if (nseg==1) {nseg = 2}}
 
+
 forsec basal {cm=2}
 forsec apical {cm=2}

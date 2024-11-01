@@ -81,57 +81,57 @@ visualization.plot_nsg(cell, electrode = electrode)
 visualization.plot_electrode_LFP_1D(lfp, cell, electrode, [0,1000], if_plot_morphology = 0)
 data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\control' + result_file, if_plot = 0, if_save = 1)
     
-    #%% ### blocked NMDA ###
-    result_file_noNMDA = 'noapicalNMDA' + result_file
-    
-    h('forall pop_section()')
-    h('forall delete_section()')
-    cell = l5_neuron_model.L5Model(wd, P, verbool = True)
-    rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
-    S_e = sequences.build_rate_seq(rates_e[0], 0, T)
-    S_i = sequences.build_rate_seq(rates_i[0], 0, T)
-    cell.set_deficit_NMDA(sec_name = 'apic', percentage = 0.5)
-    t, v = cell.simulate(T, dt, v_init, S_e, S_i)
-    visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
-    
-    lfp = M @ cell.imem
-    lfp = lfp*1e3 #unit in uV
-    
-    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_noNMDA, if_plot = 0, if_save = 1)
-    
-    ### blocked Ca ###
-    h('forall pop_section()')
-    h('forall delete_section()')
-    cell = l5_neuron_model.L5Model(wd, P, verbool = True)
-    
-    result_file_noCa = 'noapicCa' + result_file
-    
-    # rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
-    # S_e = sequences.build_rate_seq(rates_e[0], 0, T)
-    # S_i = sequences.build_rate_seq(rates_i[0], 0, T)
-    cell.set_deficite_channels('Ca_HVA', sec_name = 'apic',  percentage = 0.0)
-    cell.set_deficite_channels('Ca_LVAst', sec_name = 'apic',  percentage = 0.0)
-    t, v = cell.simulate(T, dt, v_init, S_e, S_i)
-    visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
-    
-    lfp = M @ cell.imem
-    lfp = lfp*1e3 #unit in uV
-    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_noCa, if_plot = 0, if_save = 1)
-    ### strong apical inhibition ###
-    h('forall pop_section()')
-    h('forall delete_section()')
-    cell = l5_neuron_model.L5Model(wd, P, verbool = True)
-    result_file_apicinh = 'apicinh' + result_file
-    
-    # rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
-    for i, s in enumerate(cell.GABA_meta):
-        if 'apic' in s["sec_name"]:
-            rates_i[0][i] = rates_i[0][i]*5
-    # S_e = sequences.build_rate_seq(rates_e[0], 0, T)
-    S_i = sequences.build_rate_seq(rates_i[0], 0, T)
-    t, v = cell.simulate(T, dt, v_init, S_e, S_i)
-    visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
-    
-    lfp = M @ cell.imem
-    lfp = lfp*1e3 #unit in uV
-    data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_apicinh, if_plot = 0, if_save = 1)
+#%% ### blocked NMDA ###
+result_file_noNMDA = 'noapicalNMDA' + result_file
+
+h('forall pop_section()')
+h('forall delete_section()')
+cell = l5_neuron_model.L5Model(wd, P, verbool = True)
+rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
+S_e = sequences.build_rate_seq(rates_e[0], 0, T)
+S_i = sequences.build_rate_seq(rates_i[0], 0, T)
+cell.set_deficit_NMDA(sec_name = 'apic', percentage = 0.5)
+t, v = cell.simulate(T, dt, v_init, S_e, S_i)
+visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
+
+lfp = M @ cell.imem
+lfp = lfp*1e3 #unit in uV
+
+data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_noNMDA, if_plot = 0, if_save = 1)
+
+### blocked Ca ###
+h('forall pop_section()')
+h('forall delete_section()')
+cell = l5_neuron_model.L5Model(wd, P, verbool = True)
+
+result_file_noCa = 'noapicCa' + result_file
+
+# rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
+# S_e = sequences.build_rate_seq(rates_e[0], 0, T)
+# S_i = sequences.build_rate_seq(rates_i[0], 0, T)
+cell.set_deficite_channels('Ca_HVA', sec_name = 'apic',  percentage = 0.0)
+cell.set_deficite_channels('Ca_LVAst', sec_name = 'apic',  percentage = 0.0)
+t, v = cell.simulate(T, dt, v_init, S_e, S_i)
+visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
+
+lfp = M @ cell.imem
+lfp = lfp*1e3 #unit in uV
+data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_noCa, if_plot = 0, if_save = 1)
+### strong apical inhibition ###
+h('forall pop_section()')
+h('forall delete_section()')
+cell = l5_neuron_model.L5Model(wd, P, verbool = True)
+result_file_apicinh = 'apicinh' + result_file
+
+# rates_e, rates_i = sequences.lognormal_rates(1, P['N_e'], P['N_i'], 0.85, 1)
+for i, s in enumerate(cell.GABA_meta):
+    if 'apic' in s["sec_name"]:
+        rates_i[0][i] = rates_i[0][i]*5
+# S_e = sequences.build_rate_seq(rates_e[0], 0, T)
+S_i = sequences.build_rate_seq(rates_i[0], 0, T)
+t, v = cell.simulate(T, dt, v_init, S_e, S_i)
+visualization.plot_Vm_traces(cell, ['soma[0]', 'apic[36]'], [0,T], if_plot = 1)
+
+lfp = M @ cell.imem
+lfp = lfp*1e3 #unit in uV
+data = beta.analyze_beta(cell, electrode, lfp, wd + '\\outputs\\' + result_file_apicinh, if_plot = 0, if_save = 1)
